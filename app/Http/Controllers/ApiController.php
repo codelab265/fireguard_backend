@@ -5,11 +5,13 @@ namespace App\Http\Controllers;
 use App\Models\Conversation;
 use App\Models\LastMessage;
 use App\Models\Message;
+use App\Models\UploadImage;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 
 class ApiController extends Controller
 {
@@ -114,5 +116,37 @@ class ApiController extends Controller
         }
 
         return response()->json($message);
+    }
+
+    public function uploadImages(Request $request)
+    {
+        $userId = $request->user_id;
+
+        // Retrieve the uploaded files
+        $files = $request->file('images');
+
+        // Define the path where the images will be stored
+        $path = public_path('uploads');
+
+        // Iterate over each uploaded file
+        foreach ($files as $file) {
+            // Generate a unique filename for each image
+            $filename = Str::random(10) . '.' . $file->getClientOriginalExtension();
+
+            // Move the uploaded file to the defined path
+            $file->move($path, $filename);
+
+            // Save the image URL to the database
+            $imageUrl = url('uploads/' . $filename);
+            // Use the $sellerId and $imageUrl to store the information in the 'seller_credentials' table
+            // You can write your logic here to store the seller ID and image URL
+            UploadImage::create([
+                'user_id' => $userId,
+                'uri' => $filename
+            ]);
+        }
+
+        $data = UploadImage::query()->where('user_id', $userId)->orderBy('created_at', 'DESC')->get();
+        return response()->json($data);
     }
 }
